@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banco Verde Global</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e6f7e8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #game-container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            text-align: center;
+            max-width: 800px;
+            width: 100%;
+        }
+        h1 {
+            color: #2c7e3a;
+        }
+        #board {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .space {
+            border: 1px solid #000;
+            padding: 10px;
+            font-size: 12px;
+            background-color: #f0f8ff;
+        }
+        .btn {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        #player-info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        #dice-result, #card-result {
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        #property-info, #card-info, #question-container {
+            margin-top: 20px;
+            text-align: left;
+        }
+        .progress-bar {
+            width: 100%;
+            background-color: #f3f3f3;
+            border-radius: 13px;
+            padding: 3px;
+        }
+        .progress {
+            background-color: #4CAF50;
+            width: 0%;
+            height: 20px;
+            border-radius: 10px;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+        }
+        .player1-owned {
+            background-color: #ff9999;
+        }
+        .player2-owned {
+            background-color: #99ccff;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>Banco Verde Global</h1>
+        <div id="player-info">
+            <div>Jogador 1: <span id="player1-credits">1000</span> Créditos de Carbono</div>
+            <div>Jogador 2: <span id="player2-credits">1000</span> Créditos de Carbono</div>
+        </div>
+        <div id="progress-container">
+            <div>Progresso do Jogador 1:</div>
+            <div class="progress-bar">
+                <div id="player1-progress" class="progress" style="width: 0%;">0%</div>
+            </div>
+            <div>Progresso do Jogador 2:</div>
+            <div class="progress-bar">
+                <div id="player2-progress" class="progress" style="width: 0%;">0%</div>
+            </div>
+        </div>
+        <div id="board"></div>
+        <button id="roll-dice" class="btn">Lançar Dados</button>
+        <div id="dice-result"></div>
+        <div id="property-info"></div>
+        <div id="question-container" style="display: none;">
+            <h3>Pergunta:</h3>
+            <p id="question-text"></p>
+            <button id="answer-true" class="btn">Verdadeiro</button>
+            <button id="answer-false" class="btn">Falso</button>
+        </div>
+        <div id="card-info"></div>
+        <button id="end-turn" class="btn" style="display: none;">Encerrar Turno</button>
+    </div>
+
+    <script>
+        const properties = [
+            { name: "Acordo de Paris", price: 200, info: "Tratado internacional sobre mudanças climáticas.", question: "O Acordo de Paris foi assinado em 2015.", answer: true },
+            { name: "COP26", price: 150, info: "Conferência das Nações Unidas sobre Mudanças Climáticas de 2021.", question: "A COP26 aconteceu em Londres.", answer: false },
+            { name: "Protocolo de Quioto", price: 180, info: "Tratado internacional para redução da emissão de gases de efeito estufa.", question: "O Protocolo de Quioto entrou em vigor em 2005.", answer: true },
+            { name: "Energia Solar", price: 220, info: "Fonte de energia renovável e limpa.", question: "Painéis solares funcionam apenas em dias ensolarados.", answer: false },
+            { name: "Energia Eólica", price: 220, info: "Energia obtida a partir da força dos ventos.", question: "Turbinas eólicas podem ser instaladas no mar.", answer: true },
+            { name: "Reflorestamento", price: 160, info: "Plantio de árvores em áreas desmatadas.", question: "O reflorestamento ajuda a combater o aquecimento global.", answer: true },
+            { name: "Reciclagem", price: 140, info: "Processo de transformação de materiais usados em novos produtos.", question: "Todos os tipos de plástico são recicláveis.", answer: false },
+            { name: "Transporte Sustentável", price: 200, info: "Meios de transporte com baixa emissão de carbono.", question: "Carros elétricos não emitem poluentes durante o uso.", answer: true },
+            { name: "Agricultura Sustentável", price: 180, info: "Práticas agrícolas que preservam o meio ambiente.", question: "A agricultura orgânica não usa pesticidas sintéticos.", answer: true },
+            { name: "Construção Verde", price: 240, info: "Edifícios projetados para serem ambientalmente responsáveis.", question: "Construções verdes sempre custam mais que construções tradicionais.", answer: false }
+        ];
+
+        const cards = [
+            { type: "sorte", text: "Sua empresa investiu em energia limpa. Ganhe 50 Créditos de Carbono.", effect: 50 },
+            { type: "revés", text: "Vazamento de óleo detectado. Pague 100 Créditos de Carbono para limpeza.", effect: -100 },
+            { type: "sorte", text: "Você implementou um programa de reciclagem eficiente. Ganhe 75 Créditos de Carbono.", effect: 75 },
+            { type: "revés", text: "Multa por desmatamento ilegal. Pague 150 Créditos de Carbono.", effect: -150 },
+            { type: "sorte", text: "Sua cidade ganhou um prêmio de sustentabilidade. Ganhe 100 Créditos de Carbono.", effect: 100 }
+        ];
+
+        let currentPlayer = 1;
+        let player1Credits = 1000;
+        let player2Credits = 1000;
+        let player1Position = 0;
+        let player2Position = 0;
+        let player1Properties = 0;
+        let player2Properties = 0;
+
+        const boardEl = document.getElementById('board');
+        const rollDiceBtn = document.getElementById('roll-dice');
+        const diceResultEl = document.getElementById('dice-result');
+        const propertyInfoEl = document.getElementById('property-info');
+        const cardInfoEl = document.getElementById('card-info');
+        const endTurnBtn = document.getElementById('end-turn');
+        const player1CreditsEl = document.getElementById('player1-credits');
+        const player2CreditsEl = document.getElementById('player2-credits');
+        const questionContainerEl = document.getElementById('question-container');
+        const questionTextEl = document.getElementById('question-text');
+        const answerTrueBtn = document.getElementById('answer-true');
+        const answerFalseBtn = document.getElementById('answer-false');
+        const player1ProgressEl = document.getElementById('player1-progress');
+        const player2ProgressEl = document.getElementById('player2-progress');
+
+        function createBoard() {
+            for (let i = 0; i < 12; i++) {
+                const spaceEl = document.createElement('div');
+                spaceEl.classList.add('space');
+                spaceEl.id = `space-${i}`;
+                if (i < properties.length) {
+                    spaceEl.textContent = properties[i].name;
+                } else if (i === 10) {
+                    spaceEl.textContent = "Sorte/Revés";
+                } else {
+                    spaceEl.textContent = "Início";
+                }
+                boardEl.appendChild(spaceEl);
+            }
+        }
+
+        function rollDice() {
+            return Math.floor(Math.random() * 6) + 1;
+        }
+
+        function movePlayer(spaces) {
+            if (currentPlayer === 1) {
+                player1Position = (player1Position + spaces) % 12;
+                return player1Position;
+            } else {
+                player2Position = (player2Position + spaces) % 12;
+                return player2Position;
+            }
+        }
+
+        function handleProperty(position) {
+            if (position < properties.length) {
+                const property = properties[position];
+                propertyInfoEl.innerHTML = `
+                    <h3>${property.name}</h3>
+                    <p>${property.info}</p>
+                    <p>Preço: ${property.price} Créditos de Carbono</p>
+                `;
+                showQuestion(position);
+            } else {
+                propertyInfoEl.innerHTML = '';
+                endTurnBtn.style.display = 'inline-block';
+            }
+        }
+
+        function showQuestion(position) {
+            const property = properties[position];
+            questionTextEl.textContent = property.question;
+            questionContainerEl.style.display = 'block';
+            answerTrueBtn.onclick = () => checkAnswer(position, true);
+            answerFalseBtn.onclick = () => checkAnswer(position, false);
+        }
+
+        function checkAnswer(position, userAnswer) {
+            const property = properties[position];
+            if (userAnswer === property.answer) {
+                propertyInfoEl.innerHTML += '<p>Resposta correta! Você pode comprar a propriedade.</p>';
+                questionContainerEl.style.display = 'none';
+                const buyBtn = document.createElement('button');
+                buyBtn.textContent = 'Comprar Propriedade';
+                buyBtn.classList.add('btn');
+                buyBtn.onclick = () => buyProperty(position);
+                propertyInfoEl.appendChild(buyBtn);
+            } else {
+                propertyInfoEl.innerHTML += '<p>Resposta incorreta. Você não pode comprar a propriedade.</p>';
+                questionContainerEl.style.display = 'none';
+                endTurnBtn.style.display = 'inline-block';
+            }
+        }
+
+        function buyProperty(position) {
+            const property = properties[position];
+            const spaceEl = document.getElementById(`space-${position}`);
+            if (currentPlayer === 1 && player1Credits >= property.price) {
+                player1Credits -= property.price;
+                player1CreditsEl.textContent = player1Credits;
+                propertyInfoEl.innerHTML = `<p>Você comprou ${property.name}!</p>`;
+                spaceEl.classList.add('player1-owned');
+                player1Properties++;
+            } else if (currentPlayer === 2 && player2Credits >= property.price) {
+                player2Credits -= property.price;
+                player2CreditsEl.textContent = player2Credits;
+                propertyInfoEl.innerHTML = `<p>Você comprou ${property.name}!</p>`;
+                spaceEl.classList.add('player2-owned');
+                player2Properties++;
+            } else {
+                propertyInfoEl.innerHTML = `<p>Você não tem Créditos de Carbono suficientes para comprar esta propriedade.</p>`;
+            }
+            updateProgress();
+            endTurnBtn.style.display = 'inline-block';
+        }
+
+        function drawCard() {
+            const card = cards[Math.floor(Math.random() * cards.length)];
+            cardInfoEl.innerHTML = `
+                <h3>${card.type === 'sorte' ? 'Carta de Sorte' : 'Carta de Revés'}</h3>
+                <p>${card.text}</p>
+            `;
+            if (currentPlayer === 1) {
+                player1Credits += card.effect;
+                player1CreditsEl.textContent = player1Credits;
+            } else {
+                player2Credits += card.effect;
+                player2CreditsEl.textContent = player2Credits;
+            }
+            updateProgress();
+            endTurnBtn.style.display = 'inline-block';
+        }
+
+        function updateProgress() {
+            const totalProperties = properties.length;
+            const player1Percentage = (player1Properties / totalProperties) * 100;
+            const player2Percentage = (player2Properties / totalProperties) * 100;
+            player1ProgressEl.style.width = `${player1Percentage}%`;
+            player1ProgressEl.textContent = `${Math.round(player1Percentage)}%`;
+            player2ProgressEl.style.width = `${player2Percentage}%`;
+            player2ProgressEl.textContent = `${Math.round(player2Percentage)}%`;
+        }
+
+        rollDiceBtn.addEventListener('click', () => {
+            const diceResult = rollDice();
+            diceResultEl.textContent = `Você tirou ${diceResult} no dado.`;
+            const newPosition = movePlayer(diceResult);
+            if (newPosition === 10) {
+                drawCard();
+            } else {
+                handleProperty(newPosition);
+            }
+            rollDiceBtn.style.display = 'none';
+        });
+
+        endTurnBtn.addEventListener('click', () => {
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            propertyInfoEl.innerHTML = '';
+            cardInfoEl.innerHTML = '';
+            diceResultEl.textContent = '';
+            rollDiceBtn.style.display = 'inline-block';
+            endTurnBtn.style.display = 'none';
+        });
+
+        createBoard();
+        updateProgress();
+    </script>
+</body>
+</html>
